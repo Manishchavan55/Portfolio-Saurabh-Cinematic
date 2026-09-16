@@ -47,7 +47,7 @@ export function CinematicVideo() {
   return <div className="cine-root" aria-hidden="true">
     <div ref={visualRef} className="cine-media">
       <video ref={videoRef} playsInline muted preload="auto" className="cine-video">
-        <source src="/video/portfolio-background.mp4" type="video/mp4" />
+        <source src="/video/Isolated_cinematic_hero_backgr.mp4" type="video/mp4" />
       </video>
     </div>
     <div className="cine-vignette" />
