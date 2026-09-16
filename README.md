@@ -1,35 +1,46 @@
 # Portfolio Saurabh — Cinematic
 
-A production-oriented Next.js 14 App Router portfolio with a dark cyberpunk/editorial visual system.
+A dark cyberpunk/editorial portfolio built with Next.js 14 App Router, TypeScript, Tailwind CSS and Lenis.
 
-## Signature interaction
+## Signature engine
 
-`src/components/CinematicVideo.tsx` maps document scroll to a non-looping HTML5 video timeline and uses LERP seeking for smooth frame interpolation. Pointer position adds a subtle 3D camera/parallax transform. Vignette, dynamic red tracking glow, SVG grain and scanlines complete the cinematic layer.
+`src/components/CinematicVideo.tsx` uses a non-looping, non-autoplaying HTML5 video as an interactive visual timeline. Document scroll becomes the target `currentTime`, a per-frame LERP smooths seeking, and pointer position applies a 3D camera/parallax transform. The layer also adds a vignette, mouse-tracking red glow, SVG grain and 1px scanlines.
 
-## Stack
+## 3D systems
 
-- Next.js 14 + App Router
-- TypeScript
-- Tailwind CSS
-- Lenis smooth scrolling
-- CSS 3D transforms
+- `src/components/sections/Certifications.tsx` — draggable cylindrical gallery with responsive radius, camera pull-back geometry, inertia damping (`0.945`) and auto-spin fallback.
+- `src/components/sections/Experience.tsx` — bilateral experience/education timeline with a central neon-red spine and pulsing nodes.
+- `src/components/sections/Hero.tsx` — editorial Oswald typography, dual-tone gradient treatment, telemetry metrics and magnetic CTA interaction.
+- `src/components/LenisProvider.tsx` — smooth scrolling without `overflow:hidden` on `html` or `body`.
+
+## Design tokens
+
+- `--bg: #030303`
+- `--surface: #090909`
+- `--accent-red: #c40024`
+- `--bright-red: #e0002a`
+- `--text: #f5f5f5`
 
 ## Assets
 
-Add the supplied MP4 at `public/video/portfolio-background.mp4`.
+Place the supplied 5–10 second background video at:
 
-Optional supplied portrait: `public/images/profile.png`.
+`public/video/portfolio-background.mp4`
 
-The GitHub connector can create and edit the source files, but binary uploads from the chat sandbox are not exposed by the repository API used here.
+Optional supplied portrait:
 
-## Run
+`public/images/profile.png`
+
+The source video is intended to be H.264 MP4 and muted/no-audio for efficient background playback and frame seeking.
+
+## Run locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-For production:
+Production build:
 
 ```bash
 npm run build
