@@ -11,6 +11,7 @@ export function CinematicVideo() {
   const visualRef = useRef<HTMLDivElement>(null)
   const glowRef = useRef<HTMLDivElement>(null)
   const lastSeekRef = useRef(0)
+  const seekingRef = useRef(false)
 
   useEffect(() => {
     const video = videoRef.current
@@ -19,13 +20,16 @@ export function CinematicVideo() {
     const updateTargetFromScroll = () => {
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight
       const progress = maxScroll > 0 ? window.scrollY / maxScroll : 0
-      const duration = durationRef.current
-      targetRef.current = Math.max(0, Math.min(1, progress)) * Math.max(0, duration - 0.03)
+      targetRef.current = Math.max(0, Math.min(1, progress)) * Math.max(0, durationRef.current - 0.04)
     }
 
     const onMeta = () => {
       durationRef.current = Number.isFinite(video.duration) ? video.duration : 0
       updateTargetFromScroll()
+    }
+
+    const onSeeked = () => {
+      seekingRef.current = false
     }
 
     const onPointer = (event: PointerEvent) => {
@@ -34,34 +38,40 @@ export function CinematicVideo() {
     }
 
     video.addEventListener('loadedmetadata', onMeta)
+    video.addEventListener('seeked', onSeeked)
     window.addEventListener('scroll', updateTargetFromScroll, { passive: true })
     window.addEventListener('pointermove', onPointer, { passive: true })
     updateTargetFromScroll()
 
     let raf = 0
     const tick = (now: number) => {
-      currentRef.current += (targetRef.current - currentRef.current) * 0.10
+      currentRef.current += (targetRef.current - currentRef.current) * 0.12
 
-      // Seeking a compressed video is expensive. Cap seeks to ~30fps rather than
-      // forcing a decoder seek on every 60/120Hz animation frame.
-      if (video.readyState >= HTMLMediaElement.HAVE_METADATA && now - lastSeekRef.current >= 33) {
+      // One seek at a time. This prevents the browser decoder from building a
+      // queue of stale seeks while the user scrolls quickly.
+      if (
+        video.readyState >= HTMLMediaElement.HAVE_METADATA &&
+        !seekingRef.current &&
+        now - lastSeekRef.current >= 45
+      ) {
         const delta = Math.abs(video.currentTime - currentRef.current)
-        if (delta > 0.002) {
+        if (delta > 0.018) {
           try {
+            seekingRef.current = true
             video.currentTime = currentRef.current
             lastSeekRef.current = now
           } catch {
-            // Seeking can race source/metadata changes.
+            seekingRef.current = false
           }
         }
       }
 
       const { x, y } = mouseRef.current
       if (visualRef.current) {
-        visualRef.current.style.transform = `scale(1.06) translate3d(${x * 15}px, ${y * 15}px, 0) rotateX(${y * -2}deg) rotateY(${x * 2}deg)`
+        visualRef.current.style.transform = `scale(1.04) translate3d(${x * 12}px, ${y * 12}px, 0) rotateX(${y * -1.5}deg) rotateY(${x * 1.5}deg)`
       }
       if (glowRef.current) {
-        glowRef.current.style.transform = `translate3d(${x * 34}px, ${y * 34}px, 0)`
+        glowRef.current.style.transform = `translate3d(${x * 28}px, ${y * 28}px, 0)`
       }
 
       raf = requestAnimationFrame(tick)
@@ -72,6 +82,7 @@ export function CinematicVideo() {
     return () => {
       cancelAnimationFrame(raf)
       video.removeEventListener('loadedmetadata', onMeta)
+      video.removeEventListener('seeked', onSeeked)
       window.removeEventListener('scroll', updateTargetFromScroll)
       window.removeEventListener('pointermove', onPointer)
     }
@@ -87,6 +98,7 @@ export function CinematicVideo() {
           preload="auto"
           className="cine-video"
           disablePictureInPicture
+          disableRemotePlayback
         >
           <source src="/video/portfolio-background-scrub-optimized.mp4" type="video/mp4" />
         </video>
