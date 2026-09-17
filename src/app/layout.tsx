@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter, Oswald, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+import './performance.css'
 import { LenisProvider } from '@/components/LenisProvider'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
