@@ -4,32 +4,67 @@ import { useEffect, useRef } from 'react'
 
 export function CinematicVideo() {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const currentRef = useRef(0)
   const targetRef = useRef(0)
   const durationRef = useRef(0)
   const mouseRef = useRef({ x: 0, y: 0 })
   const visualRef = useRef<HTMLDivElement>(null)
   const glowRef = useRef<HTMLDivElement>(null)
   const lastSeekRef = useRef(0)
-  const seekingRef = useRef(false)
+  const seekTimerRef = useRef<number | null>(null)
+  const scrollingRef = useRef(false)
 
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
 
-    const updateTargetFromScroll = () => {
+    const updateTarget = () => {
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight
       const progress = maxScroll > 0 ? window.scrollY / maxScroll : 0
-      targetRef.current = Math.max(0, Math.min(1, progress)) * Math.max(0, durationRef.current - 0.04)
+      targetRef.current = Math.max(0, Math.min(1, progress)) * Math.max(0, durationRef.current - 0.05)
+    }
+
+    const seekToTarget = () => {
+      if (!video || video.readyState < HTMLMediaElement.HAVE_METADATA) return
+      const target = targetRef.current
+      if (Math.abs(video.currentTime - target) < 0.025) return
+
+      try {
+        // fastSeek lets browsers use nearby keyframes instead of forcing an
+        // expensive exact decode on every scroll event.
+        if ('fastSeek' in video && typeof video.fastSeek === 'function') {
+          video.fastSeek(target)
+        } else {
+          video.currentTime = target
+        }
+        lastSeekRef.current = performance.now()
+      } catch {
+        // Ignore transient seeks while the media element is loading/changing.
+      }
     }
 
     const onMeta = () => {
       durationRef.current = Number.isFinite(video.duration) ? video.duration : 0
-      updateTargetFromScroll()
+      updateTarget()
+      seekToTarget()
     }
 
-    const onSeeked = () => {
-      seekingRef.current = false
+    const onScroll = () => {
+      updateTarget()
+      scrollingRef.current = true
+
+      // Do not continuously hammer the video decoder. Schedule one seek at a
+      // time and let the browser finish decoding before the next one.
+      if (seekTimerRef.current === null) {
+        seekTimerRef.current = window.setTimeout(() => {
+          seekTimerRef.current = null
+          seekToTarget()
+        }, 70)
+      }
+    }
+
+    const onScrollEnd = () => {
+      scrollingRef.current = false
+      seekToTarget()
     }
 
     const onPointer = (event: PointerEvent) => {
@@ -38,42 +73,29 @@ export function CinematicVideo() {
     }
 
     video.addEventListener('loadedmetadata', onMeta)
-    video.addEventListener('seeked', onSeeked)
-    window.addEventListener('scroll', updateTargetFromScroll, { passive: true })
+    window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('pointermove', onPointer, { passive: true })
-    updateTargetFromScroll()
+    updateTarget()
+
+    let scrollEndTimer: number | null = null
+    const scrollWithEnd = () => {
+      onScroll()
+      if (scrollEndTimer !== null) window.clearTimeout(scrollEndTimer)
+      scrollEndTimer = window.setTimeout(onScrollEnd, 140)
+    }
+
+    window.removeEventListener('scroll', onScroll)
+    window.addEventListener('scroll', scrollWithEnd, { passive: true })
 
     let raf = 0
-    const tick = (now: number) => {
-      currentRef.current += (targetRef.current - currentRef.current) * 0.12
-
-      // One seek at a time. This prevents the browser decoder from building a
-      // queue of stale seeks while the user scrolls quickly.
-      if (
-        video.readyState >= HTMLMediaElement.HAVE_METADATA &&
-        !seekingRef.current &&
-        now - lastSeekRef.current >= 45
-      ) {
-        const delta = Math.abs(video.currentTime - currentRef.current)
-        if (delta > 0.018) {
-          try {
-            seekingRef.current = true
-            video.currentTime = currentRef.current
-            lastSeekRef.current = now
-          } catch {
-            seekingRef.current = false
-          }
-        }
-      }
-
+    const tick = () => {
       const { x, y } = mouseRef.current
       if (visualRef.current) {
-        visualRef.current.style.transform = `scale(1.04) translate3d(${x * 12}px, ${y * 12}px, 0) rotateX(${y * -1.5}deg) rotateY(${x * 1.5}deg)`
+        visualRef.current.style.transform = `scale(1.035) translate3d(${x * 10}px, ${y * 10}px, 0) rotateX(${y * -1.25}deg) rotateY(${x * 1.25}deg)`
       }
       if (glowRef.current) {
-        glowRef.current.style.transform = `translate3d(${x * 28}px, ${y * 28}px, 0)`
+        glowRef.current.style.transform = `translate3d(${x * 24}px, ${y * 24}px, 0)`
       }
-
       raf = requestAnimationFrame(tick)
     }
 
@@ -81,10 +103,14 @@ export function CinematicVideo() {
 
     return () => {
       cancelAnimationFrame(raf)
+      if (seekTimerRef.current !== null) window.clearTimeout(seekTimerRef.current)
+      if (scrollEndTimer !== null) window.clearTimeout(scrollEndTimer)
       video.removeEventListener('loadedmetadata', onMeta)
-      video.removeEventListener('seeked', onSeeked)
-      window.removeEventListener('scroll', updateTargetFromScroll)
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('scroll', scrollWithEnd)
       window.removeEventListener('pointermove', onPointer)
+      void scrollingRef
+      void lastSeekRef
     }
   }, [])
 
