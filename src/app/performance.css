@@ -1,0 +1,66 @@
+/* GPU-friendly overrides for the cinematic background. */
+.cine-root {
+  z-index: 0;
+}
+
+main,
+footer {
+  position: relative;
+  z-index: 1;
+}
+
+.cine-media {
+  contain: layout paint;
+}
+
+.cine-video {
+  filter: none;
+  opacity: .58;
+}
+
+.cine-glow {
+  filter: none;
+  width: 34vw;
+  height: 34vw;
+  left: calc(50% - 17vw);
+  top: calc(50% - 17vw);
+  opacity: .8;
+}
+
+/* SVG turbulence is expensive when composited over a full-screen video. */
+.cine-grain {
+  opacity: .025;
+  background-image: none;
+  background-color: rgba(255,255,255,.018);
+}
+
+.cine-scanlines {
+  opacity: .025;
+}
+
+/* Glass blur over a moving video is particularly expensive on mobile GPUs. */
+.timeline-card,
+.cylinder-card {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+@media (max-width: 900px) {
+  .cine-media {
+    inset: -2%;
+  }
+
+  .cine-video {
+    opacity: .52;
+  }
+
+  .cine-glow {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cine-root {
+    display: none;
+  }
+}
